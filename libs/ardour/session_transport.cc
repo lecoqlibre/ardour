@@ -828,7 +828,7 @@ Session::non_realtime_stop (bool abort, int on_entry, bool& finished)
 			(*i)->non_realtime_transport_stop (_transport_sample, !(ptw & PostTransportLocate));
 		}
 
-		update_latency_compensation ();
+		update_latency_compensation (); // XXX why?
 	}
 
 	bool const auto_return_enabled = (!config.get_external_sync() && (Config->get_auto_return_target_list() || abort));
@@ -875,6 +875,7 @@ Session::non_realtime_stop (bool abort, int on_entry, bool& finished)
 
 			if (do_locate) {
 				_engine.transport_locate (_transport_sample);
+				non_realtime_locate ();
 			}
 		}
 
@@ -895,7 +896,7 @@ Session::non_realtime_stop (bool abort, int on_entry, bool& finished)
 
 	/* this for() block can be put inside the previous if() and has the effect of ... ??? what */
 
-	{
+	if (0) {
 		DEBUG_TRACE (DEBUG::Transport, X_("Butler PTW: locate\n"));
 		for (RouteList::iterator i = r->begin(); i != r->end(); ++i) {
 			DEBUG_TRACE (DEBUG::Transport, string_compose ("Butler PTW: locate on %1\n", (*i)->name()));
@@ -909,7 +910,7 @@ Session::non_realtime_stop (bool abort, int on_entry, bool& finished)
 		}
 	}
 
-	{
+	if (0) {
 		VCAList v = _vca_manager->vcas ();
 		for (VCAList::const_iterator i = v.begin(); i != v.end(); ++i) {
 			(*i)->non_realtime_locate (_transport_sample);
@@ -1220,7 +1221,9 @@ Session::locate (samplepos_t target_sample, bool with_roll, bool with_flush, boo
 	// thread(s?) can restart.
 	g_atomic_int_inc (&_seek_counter);
 	_last_roll_or_reversal_location = target_sample;
+	if (!for_loop_enabled && Config->get_seamless_loop()) {
 	_remaining_latency_preroll = worst_latency_preroll ();
+	}
 	timecode_time(_transport_sample, transmitting_timecode_time); // XXX here?
 
 	/* do "stopped" stuff if:
@@ -1924,8 +1927,7 @@ Session::set_play_range (list<AudioRange>& range, bool leave_rolling)
 			next = i;
 			++next;
 
-			/* locating/stopping is subject to delays for declicking.
-			 */
+			/* locating/stopping is subject to delays for declicking.  */
 
 			samplepos_t requested_sample = i->end;
 
